@@ -1,0 +1,30 @@
+{
+  "name": "ng2-dcjs",
+  "version": "1.0.0",
+  "description": "Angular components for WebGL scenes rendered with dcjs",
+  "main": "index.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ventrom/ng2-dcjs.git"
+  },
+  "keywords": [
+    "angular",
+    "dcjs"
+  ],
+  "author": "Ventrom LLC",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Ventrom/ng2-dcjs/issues"
+  },
+  "homepage": "https://github.com/Ventrom/ng2-dcjs#readme",
+  "dependencies": {
+    "@angular/common": "^2.4.4",
+    "@angular/core": "^2.4.4",
+    "dc": "github:ventrom/dc.js#kavanagh-grouped-bar",
+    "rxjs": "^5.0.1",
+    "zone.js": "^0.7.8"
+  },
+  "devDependencies": {
+    "typescript": "^2.0.3"
+  }
+}
