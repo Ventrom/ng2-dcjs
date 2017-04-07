@@ -20,7 +20,11 @@
   "dependencies": {
     "@angular/common": "^2.4.4",
     "@angular/core": "^2.4.4",
+    "d3": "3.5.17",
     "dc": "github:ventrom/dc.js#kavanagh-grouped-bar",
+    "leaflet": "npm:leaflet@^0.7.7",
+    "leaflet.markercluster": "npm:leaflet.markercluster@^0.5.0",
+    "universe": "^0.8.0",
     "rxjs": "^5.0.1",
     "zone.js": "^0.7.8"
   },
