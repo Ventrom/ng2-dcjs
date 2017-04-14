@@ -8,9 +8,13 @@ import {
     BarChartComponent,
     RangeChartComponent,
     BubbleChartComponent,
-    CandleChartComponent
+    CandleChartComponent,
+    LeafletMarkerChartComponent,
+    LegendComponent,
+    TopoLayerComponent,
+    LeafletIconComponent,
+    FomatsComponent
 } from './chart.components'
-import { UtilsService } from './services/utils.service'
 //import { QueryComponent } from './query.components'
 
 @NgModule({
@@ -22,14 +26,16 @@ import { UtilsService } from './services/utils.service'
         BarChartComponent,
         RangeChartComponent,
         BubbleChartComponent,
-        CandleChartComponent
+        CandleChartComponent,
+        LeafletMarkerChartComponent,
+        LegendComponent,
+        TopoLayerComponent,
+        LeafletIconComponent,
+        FomatsComponent
         //QueryComponent
     ],
     imports: [
         CommonModule
-    ],
-    providers: [
-        UtilsService
     ],
     exports: [
         LineChartComponent,
@@ -39,7 +45,12 @@ import { UtilsService } from './services/utils.service'
         BarChartComponent,
         RangeChartComponent,
         BubbleChartComponent,
-        CandleChartComponent
+        CandleChartComponent,
+        LeafletMarkerChartComponent,
+        LegendComponent,
+        TopoLayerComponent,
+        LeafletIconComponent,
+        FomatsComponent
         //QueryComponent
     ]
 })
