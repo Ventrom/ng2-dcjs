@@ -18,8 +18,8 @@
   },
   "homepage": "https://github.com/Ventrom/ng2-dcjs#readme",
   "dependencies": {
-    "@angular/common": "^2.4.4",
-    "@angular/core": "^2.4.4",
+    "@angular/common": "^4.0.2",
+    "@angular/core": "^4.0.2",
     "d3": "3.5.17",
     "dc": "github:ventrom/dc.js#kavanagh-grouped-bar",
     "dc-addons": "^0.13.5",
@@ -28,9 +28,9 @@
     "universe": "^0.8.0",
     "rxjs": "^5.0.1",
     "topojson": "^1.6.26",
-    "zone.js": "^0.7.8"
+    "zone.js": "^0.8.4"
   },
   "devDependencies": {
-    "typescript": "^2.0.3"
+    "typescript": "~2.1.0"
   }
 }
