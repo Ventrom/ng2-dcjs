@@ -286,6 +286,7 @@ export class CandleChartComponent extends CoordinateChartComponent implements Af
     @Input() brushOn: boolean = false
     @Input() mouseZoomable: boolean = false
     @Input() boxWidth: number = 3.0
+    @Input() yAxisPadding: string = '3%'
     @Input() colorAccessor: () => number
     @Input() tickFormat: () => void = function() {}
 
@@ -304,10 +305,11 @@ export class CandleChartComponent extends CoordinateChartComponent implements Af
                    .renderHorizontalGridLines(this.horizontalGridLines)
                    .brushOn(this.brushOn)
                    .boxWidth(this.boxWidth)
+                   .tickFormat(this.tickFormat)
+                   .yAxisPadding(this.yAxisPadding)
                    .yAxis().tickFormat(function(v) {return self.formatsComponent.numberFormat(v)})
 
         if (this.colorAccessor) this._chart.colorAccessor(this.colorAccessor)
-        if (this.tickFormat) this._chart.tickFormat(this.tickFormat)
     }
 }
 
@@ -349,13 +351,18 @@ export class LeafletMarkerChartComponent extends ChartComponent implements After
     @Input() mouseZoomable: boolean = false
     @Input() center: number[]
     @Input() zoom: number
+    @Input() maxZoom: number = 10
     @Input() fitOnRender: boolean = false
-    @Input() fitOnRedraw: boolean = true
+    @Input() fitOnRedraw: boolean = false
     @Input() cluster: boolean = false
     @Input() filterByArea: boolean = true
     @Input() rebuildMarkers: boolean = true
     @Input() locationAccessor: (d: any) => number[]
-
+    @Input() clusterOptions: any = {
+        maxClusterRadius: 30,
+        spiderfyOnMaxZoom: false, showCoverageOnHover: false,
+        zoomToBoundsOnClick: false
+    }
     @ContentChild(LeafletIconComponent) leafletIcon: LeafletIconComponent
     @ContentChild(TopoLayerComponent) topoLayer: TopoLayerComponent
 
@@ -366,13 +373,19 @@ export class LeafletMarkerChartComponent extends ChartComponent implements After
     ngAfterViewInit() {
         let self = this
 
+        // Add this property after it has been passed
+        this.clusterOptions.iconCreateFunction = self.leafletIcon.icon
+
         this._chart = dc.leafletMarkerChart(this.parent)
             .dimension(this.dimension)
             .group(this.group)
-            .center(this.center)
-            .zoom(this.zoom)
             .fitOnRender(this.fitOnRender)
             .fitOnRedraw(this.fitOnRedraw)
+            .center(this.center)
+            .zoom(this.zoom)
+            // Map options is needed in case we set cluster to true
+            .mapOptions({center: this.center, zoom: this.zoom, maxZoom: this.maxZoom})
+            .clusterOptions(this.clusterOptions)
             .cluster(this.cluster)
             .filterByArea(this.filterByArea)
             .rebuildMarkers(this.rebuildMarkers)
