@@ -25,9 +25,10 @@
     "dc-addons": "github:Ventrom/dc-addons",
     "leaflet": "^0.7.7",
     "leaflet.markercluster": "^0.5.0",
-    "universe": "github:Ventrom/universe",
+    "pluck": "0.0.4",
     "rxjs": "^5.0.1",
     "topojson": "^1.6.26",
+    "universe": "github:Ventrom/universe",
     "zone.js": "^0.8.4"
   },
   "devDependencies": {
