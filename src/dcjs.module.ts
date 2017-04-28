@@ -15,7 +15,7 @@ import {
     LeafletIconComponent,
     FomatsComponent
 } from './chart.components'
-//import { QueryComponent } from './query.components'
+import { QueryComponent } from './query.components'
 
 @NgModule({
     declarations: [
@@ -31,8 +31,8 @@ import {
         LegendComponent,
         TopoLayerComponent,
         LeafletIconComponent,
-        FomatsComponent
-        //QueryComponent
+        FomatsComponent,
+        QueryComponent
     ],
     imports: [
         CommonModule
@@ -50,8 +50,8 @@ import {
         LegendComponent,
         TopoLayerComponent,
         LeafletIconComponent,
-        FomatsComponent
-        //QueryComponent
+        FomatsComponent,
+        QueryComponent
     ]
 })
 export class DcjsModule {}

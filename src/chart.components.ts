@@ -1,6 +1,10 @@
-import { AfterViewInit, ContentChildren, Directive, ContentChild, Input, OnDestroy, OnInit, QueryList, forwardRef } from '@angular/core'
+import { AfterContentInit, AfterViewInit, ContentChildren, Directive, ElementRef,
+         ContentChild, Input, OnDestroy, OnInit, QueryList, forwardRef } from '@angular/core'
+import { QueryComponent } from './query.components';
+import * as d3 from 'd3';
 
-const d3 = require('d3')
+declare var require;
+const pluck = require('pluck')
 let dc = require('dc')
 require('./dc-addons.js')
 const L = require('leaflet')
@@ -89,24 +93,40 @@ export class TopoLayerComponent {
 }
 
 // Main chart components
-export abstract class ChartComponent implements OnDestroy {
-    @Input() parent: any = null
-    @Input() group: string = undefined
-    //TODO: remove
-    @Input() dimension: any = null
+export abstract class ChartComponent implements AfterContentInit, OnDestroy {
+    @Input() chartGroup: string = undefined
     @Input() height: any = null
     @Input() width: any = null
     @Input() margins: {left?: number, right?: number, top?: number, bottom?: number} = null
+    @Input() key: string = 'key'
+    @Input() value: string = 'value'
+    @ContentChild(QueryComponent) query: QueryComponent
+    destroyed: boolean = false
 
-    abstract get chart(): any
+    abstract get chart(): Promise<any>
+
+    ngAfterContentInit() {
+        if (this.query) {
+            this.query.result.subscribe(result => {
+                this.chart.then((chart) => {
+                    chart.dimension(result.column.dimension)
+                         .group(result.group)
+                         .keyAccessor(pluck(this.key))
+                         .valueAccessor(pluck(this.value))
+                    chart.render()
+                })
+            })
+        }
+    }
 
     ngOnDestroy() {
-        if (this.chart) dc.deregisterChart(this.chart, this.group)
+        this.chart.then((chart) => dc.deregisterChart(this.chart, this.chartGroup))
+        this.destroyed = true
     }
 }
 
 //TODO: maybe add nested service call somehow?
-export abstract class CoordinateChartComponent extends ChartComponent implements AfterViewInit {
+export abstract class CoordinateChartComponent extends ChartComponent {
     @Input() xScale: any
     @Input() yScale: any
     @Input() xTicks: number
@@ -117,26 +137,25 @@ export abstract class CoordinateChartComponent extends ChartComponent implements
     @Input() title: (d: any) => string
     @Input() transitionDuration: number = 1000
 
-    // Using the lifecycle to make this be called after initialization
-    ngAfterViewInit() {
-        if (this.xScale) this.chart.x(this.xScale)
-        if (this.yScale) this.chart.y(this.yScale)
-        if (this.xTicks) this.chart.xAxis().ticks(this.xTicks)
-        if (this.yTicks) this.chart.yAxis().ticks(this.yTicks)
-        if (this.margins) this.chart.margins(this.margins)
-        if (this.title) this.chart.title(this.title)
-        this.chart.transitionDuration(this.transitionDuration)
-
-        // Add the group and dimension for last
-        this.chart.dimension(this.dimension)
-                  .group(this.group)
-
-        this.chart.render()
+    initialize(chart): any {
+        if (this.xScale) chart.x(this.xScale)
+        if (this.yScale) chart.y(this.yScale)
+        if (this.xTicks) chart.xAxis().ticks(this.xTicks)
+        if (this.yTicks) chart.yAxis().ticks(this.yTicks)
+        if (this.margins) chart.margins(this.margins)
+        if (this.title) chart.title(this.title)
+        chart.transitionDuration(this.transitionDuration)
+        return chart
     }
 }
 
 @Directive({
     selector: 'line-chart',
+    host: {
+       '[style.display]': "'block'",
+       '[style.height]': "'100%'",
+       '[style.width]': "'100%'"
+     },
     providers: [
         {provide: CoordinateChartComponent, useExisting: forwardRef(() => LineChartComponent) },
         {provide: ChartComponent, useExisting: forwardRef(() => LineChartComponent) }
@@ -150,14 +169,33 @@ export class LineChartComponent extends CoordinateChartComponent implements Afte
 
     private _chart: any = null
 
-    get chart(): any {return this._chart}
+    constructor(private elementRef: ElementRef) {
+        super()
+    }
 
-    ngOnInit() {
-        this._chart = dc.lineChart(this.parent)
+    get chart(): Promise<any> {
+        return new Promise<any>((resolve, reject) => {
+            d3.timer(() => {
+                if (this.destroyed) {
+                    reject(null)
+                    return true
+                }
+                if (this._chart) {
+                    resolve(this._chart)
+                    return true
+                }
+                return false
+            }, 0)
+        })
+    }
+
+    ngAfterViewInit() {
+        let chart = dc.lineChart(this.elementRef.nativeElement)
                         .interpolate(this.interpolate)
                         .dashStyle(this.dashStyle)
                         .renderArea(this.renderArea)
                         .xyTipsOn(this.xyTipsOn)
+        this._chart = this.initialize(chart)
     }
 }
 
@@ -177,15 +215,34 @@ export class SandChartComponent extends CoordinateChartComponent implements Afte
 
     private _chart: any = null
 
-    get chart(): any {return this._chart}
+    constructor(private elementRef: ElementRef) {
+        super()
+    }
 
-    ngOnInit() {
-        this._chart = dc.lineChart(this.parent)
+    get chart(): Promise<any> {
+        return new Promise<any>((resolve, reject) => {
+            d3.timer(() => {
+                if (this.destroyed) {
+                    reject(null)
+                    return true
+                }
+                if (this._chart) {
+                    resolve(this._chart)
+                    return true
+                }
+                return false
+            }, 0)
+        })
+    }
+
+    ngAfterViewInit() {
+        this._chart = dc.lineChart(this.elementRef.nativeElement)
                         .renderArea(this.renderArea)
                         .elasticY(this.elasticY)
                         .renderHorizontalGridLines(this.horizontalGridLines)
                         .brushOn(this.brushOn)
                         .mouseZoomable(this.mouseZoomable)
+        this.initialize(this._chart)
     }
 }
 
@@ -203,12 +260,31 @@ export class RowChartComponent extends CoordinateChartComponent implements After
 
     private _chart: any = null
 
-    get chart(): any {return this._chart}
+    constructor(private elementRef: ElementRef) {
+        super()
+    }
 
-    ngOnInit() {
-        this._chart = dc.rowChart(this.parent)
+    get chart(): Promise<any> {
+        return new Promise<any>((resolve, reject) => {
+            d3.timer(() => {
+                if (this.destroyed) {
+                    reject(null)
+                    return true
+                }
+                if (this._chart) {
+                    resolve(this._chart)
+                    return true
+                }
+                return false
+            }, 0)
+        })
+    }
+
+    ngAfterViewInit() {
+        this._chart = dc.rowChart(this.elementRef.nativeElement)
                         .elasticX(this.elasticX)
                         .label(this.label)
+        this.initialize(this._chart)
     }
 }
 
@@ -231,11 +307,29 @@ export class BarChartComponent extends CoordinateChartComponent implements After
 
     private _chart: any = null
 
-    get chart(): any {return this._chart}
+    constructor(private elementRef: ElementRef) {
+        super()
+    }
 
-    ngOnInit() {
+    get chart(): Promise<any> {
+        return new Promise<any>((resolve, reject) => {
+            d3.timer(() => {
+                if (this.destroyed) {
+                    reject(null)
+                    return true
+                }
+                if (this._chart) {
+                    resolve(this._chart)
+                    return true
+                }
+                return false
+            }, 0)
+        })
+    }
+
+    ngAfterViewInit() {
         let self = this
-        this._chart = dc.barChart(this.parent)
+        this._chart = dc.barChart(this.elementRef.nativeElement)
         this._chart.brushOn(this.brushOn)
                    .gap(this.gap)
                    .centerBar(this.centerBar)
@@ -244,6 +338,7 @@ export class BarChartComponent extends CoordinateChartComponent implements After
                    .yAxis().tickFormat(function(v) {return self.formatsComponent.numberFormat(v)})
 
         this._chart.legend(this.legendComponent.legend)
+        this.initialize(this._chart)
     }
 }
 
@@ -262,14 +357,33 @@ export class RangeChartComponent extends CoordinateChartComponent implements Aft
 
     private _chart: any = null
 
-    get chart(): any {return this._chart}
+    constructor(private elementRef: ElementRef) {
+        super()
+    }
 
-    ngOnInit() {
+    get chart(): Promise<any> {
+        return new Promise<any>((resolve, reject) => {
+            d3.timer(() => {
+                if (this.destroyed) {
+                    reject(null)
+                    return true
+                }
+                if (this._chart) {
+                    resolve(this._chart)
+                    return true
+                }
+                return false
+            }, 0)
+        })
+    }
+
+    ngAfterViewInit() {
         let self = this
-        this._chart = dc.barChart(this.parent)
+        this._chart = dc.barChart(this.elementRef.nativeElement)
         this._chart.gap(this.gap)
                    .alwaysUseRounding(this.useRounding)
                    .elasticY(this.elasticY)
+        this.initialize(this._chart)
     }
 }
 
@@ -294,12 +408,30 @@ export class CandleChartComponent extends CoordinateChartComponent implements Af
 
     private _chart: any = null
 
-    get chart(): any {return this._chart}
+    constructor(private elementRef: ElementRef) {
+        super()
+    }
 
-    ngOnInit() {
+    get chart(): Promise<any> {
+        return new Promise<any>((resolve, reject) => {
+            d3.timer(() => {
+                if (this.destroyed) {
+                    reject(null)
+                    return true
+                }
+                if (this._chart) {
+                    resolve(this._chart)
+                    return true
+                }
+                return false
+            }, 0)
+        })
+    }
+
+    ngAfterViewInit() {
         let self = this
         // Separate these calls for now
-        this._chart = dc.boxPlot(this.parent)
+        this._chart = dc.boxPlot(this.elementRef.nativeElement)
         this._chart.mouseZoomable(this.mouseZoomable)
                    .elasticY(this.elasticY)
                    .renderHorizontalGridLines(this.horizontalGridLines)
@@ -310,11 +442,11 @@ export class CandleChartComponent extends CoordinateChartComponent implements Af
                    .yAxis().tickFormat(function(v) {return self.formatsComponent.numberFormat(v)})
 
         if (this.colorAccessor) this._chart.colorAccessor(this.colorAccessor)
+        this.initialize(this._chart)
     }
 }
 
-// The last three directives do not extend the CoordinateChartComponent, so they
-// use a ngAfterViewInit instead of a ngOnInit
+// The last three directives do not extend the CoordinateChartComponent
 @Directive({
     selector: 'bubble-chart',
     providers: [
@@ -325,15 +457,29 @@ export class CandleChartComponent extends CoordinateChartComponent implements Af
 export class BubbleChartComponent extends ChartComponent implements AfterViewInit {
     private _chart: any = null
 
-    get chart(): any {return this._chart}
+    constructor(private elementRef: ElementRef) {
+        super()
+    }
+
+    get chart(): Promise<any> {
+        return new Promise<any>((resolve, reject) => {
+            d3.timer(() => {
+                if (this.destroyed) {
+                    reject(null)
+                    return true
+                }
+                if (this._chart) {
+                    resolve(this._chart)
+                    return true
+                }
+                return false
+            }, 0)
+        })
+    }
 
     ngAfterViewInit() {
         // Uses an existing svg
-        this._chart = dc.bubbleOverlay(this.parent).svg(d3.select(this.parent).select('svg'))
-                        .dimension(this.dimension)
-                        .group(this.group)
-
-        this._chart.render()
+        this._chart = dc.bubbleOverlay(this.elementRef.nativeElement).svg(d3.select(this.elementRef.nativeElement).select('svg'))
     }
 }
 
@@ -368,7 +514,25 @@ export class LeafletMarkerChartComponent extends ChartComponent implements After
 
     private _chart: any = null
 
-    get chart(): any {return this._chart}
+    constructor(private elementRef: ElementRef) {
+        super()
+    }
+
+    get chart(): Promise<any> {
+        return new Promise<any>((resolve, reject) => {
+            d3.timer(() => {
+                if (this.destroyed) {
+                    reject(null)
+                    return true
+                }
+                if (this._chart) {
+                    resolve(this._chart)
+                    return true
+                }
+                return false
+            }, 0)
+        })
+    }
 
     ngAfterViewInit() {
         let self = this
@@ -376,9 +540,7 @@ export class LeafletMarkerChartComponent extends ChartComponent implements After
         // Add this property after it has been passed
         this.clusterOptions.iconCreateFunction = self.leafletIcon.icon
 
-        this._chart = dc.leafletMarkerChart(this.parent)
-            .dimension(this.dimension)
-            .group(this.group)
+        this._chart = dc.leafletMarkerChart(this.elementRef.nativeElement)
             .fitOnRender(this.fitOnRender)
             .fitOnRedraw(this.fitOnRedraw)
             .center(this.center)
@@ -392,8 +554,6 @@ export class LeafletMarkerChartComponent extends ChartComponent implements After
             .icon(this.leafletIcon.icon)
             .locationAccessor(this.locationAccessor)
             .tiles(this.topoLayer.layer)
-
-        this._chart.render()
     }
 }
 
@@ -409,15 +569,29 @@ export class PieChartComponent extends ChartComponent implements AfterViewInit {
 
     private _chart: any = null
 
-    get chart(): any {return this._chart}
+    constructor(private elementRef: ElementRef) {
+        super()
+    }
+
+    get chart(): Promise<any> {
+        return new Promise<any>((resolve, reject) => {
+            d3.timer(() => {
+                if (this.destroyed) {
+                    reject(null)
+                    return true
+                }
+                if (this._chart) {
+                    resolve(this._chart)
+                    return true
+                }
+                return false
+            }, 0)
+        })
+    }
 
     ngAfterViewInit() {
-        this._chart = dc.pieChart(this.parent)
+        this._chart = dc.pieChart(this.elementRef.nativeElement)
         this._chart.cap(this.cap)
                    .radius(this.radius ? this.radius : Math.min(this._chart.width(), this._chart.height())*0.35)
-                   .dimension(this.dimension)
-                   .group(this.group)
-
-        this._chart.render()
     }
 }
