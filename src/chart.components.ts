@@ -1,5 +1,5 @@
 import { AfterContentInit, AfterViewInit, ContentChildren, Directive, ElementRef,
-         ContentChild, Input, OnDestroy, OnInit, QueryList, forwardRef } from '@angular/core'
+         ContentChild, EventEmitter, Input, Output, OnDestroy, OnInit, QueryList, forwardRef } from '@angular/core'
 import { QueryComponent } from './query.components';
 import * as d3 from 'd3';
 
@@ -24,7 +24,7 @@ export class FomatsComponent {
 }
 
 @Directive({selector: 'dc-legend'})
-export class LegendComponent {
+export class LegendComponent implements OnInit {
     @Input() x: number
     @Input() y: number
     @Input() itemHeight: number
@@ -40,7 +40,7 @@ export class LegendComponent {
 }
 
 @Directive({selector: 'leaflet-icon'})
-export class LeafletIconComponent {
+export class LeafletIconComponent implements OnInit {
     @Input() icon: (d: any) => any
     @Input() iconSize: number[] = [20, 30]
 
@@ -63,7 +63,7 @@ export class LeafletIconComponent {
 }
 
 @Directive({selector: 'topo-layer'})
-export class TopoLayerComponent {
+export class TopoLayerComponent implements OnInit {
     @Input() world: any
     @Input() fillColor: string
     @Input() fillOpacity: number
@@ -71,6 +71,7 @@ export class TopoLayerComponent {
     @Input() weight: number
     @Input() opacity: number
     layer: (map: any) => void
+    map: any
 
     ngOnInit() {
         let self = this
@@ -88,6 +89,8 @@ export class TopoLayerComponent {
                     opacity: self.opacity
                 })
             })
+
+            self.map = map
         }
     }
 }
@@ -155,7 +158,7 @@ export abstract class CoordinateChartComponent extends ChartComponent {
        '[style.display]': "'block'",
        '[style.height]': "'100%'",
        '[style.width]': "'100%'"
-     },
+    },
     providers: [
         {provide: CoordinateChartComponent, useExisting: forwardRef(() => LineChartComponent) },
         {provide: ChartComponent, useExisting: forwardRef(() => LineChartComponent) }
@@ -201,6 +204,11 @@ export class LineChartComponent extends CoordinateChartComponent implements Afte
 
 @Directive({
     selector: 'sand-chart',
+    host: {
+       '[style.display]': "'block'",
+       '[style.height]': "'100%'",
+       '[style.width]': "'100%'"
+    },
     providers: [
         {provide: CoordinateChartComponent, useExisting: forwardRef(() => SandChartComponent) },
         {provide: ChartComponent, useExisting: forwardRef(() => SandChartComponent) }
@@ -248,6 +256,11 @@ export class SandChartComponent extends CoordinateChartComponent implements Afte
 
 @Directive({
     selector: 'row-chart',
+    host: {
+       '[style.display]': "'block'",
+       '[style.height]': "'100%'",
+       '[style.width]': "'100%'"
+    },
     providers: [
         {provide: CoordinateChartComponent, useExisting: forwardRef(() => RowChartComponent) },
         {provide: ChartComponent, useExisting: forwardRef(() => RowChartComponent) }
@@ -290,6 +303,11 @@ export class RowChartComponent extends CoordinateChartComponent implements After
 
 @Directive({
     selector: 'bar-chart',
+    host: {
+       '[style.display]': "'block'",
+       '[style.height]': "'100%'",
+       '[style.width]': "'100%'"
+    },
     providers: [
         {provide: CoordinateChartComponent, useExisting: forwardRef(() => BarChartComponent) },
         {provide: ChartComponent, useExisting: forwardRef(() => BarChartComponent) }
@@ -344,6 +362,11 @@ export class BarChartComponent extends CoordinateChartComponent implements After
 
 @Directive({
     selector: 'range-chart',
+    host: {
+       '[style.display]': "'block'",
+       '[style.height]': "'100%'",
+       '[style.width]': "'100%'"
+    },
     providers: [
         {provide: CoordinateChartComponent, useExisting: forwardRef(() => RangeChartComponent) },
         {provide: ChartComponent, useExisting: forwardRef(() => RangeChartComponent) }
@@ -378,7 +401,6 @@ export class RangeChartComponent extends CoordinateChartComponent implements Aft
     }
 
     ngAfterViewInit() {
-        let self = this
         this._chart = dc.barChart(this.elementRef.nativeElement)
         this._chart.gap(this.gap)
                    .alwaysUseRounding(this.useRounding)
@@ -389,6 +411,11 @@ export class RangeChartComponent extends CoordinateChartComponent implements Aft
 
 @Directive({
     selector: 'candle-chart',
+    host: {
+       '[style.display]': "'block'",
+       '[style.height]': "'100%'",
+       '[style.width]': "'100%'"
+    },
     providers: [
         {provide: CoordinateChartComponent, useExisting: forwardRef(() => CandleChartComponent) },
         {provide: ChartComponent, useExisting: forwardRef(() => CandleChartComponent) }
@@ -485,6 +512,11 @@ export class BubbleChartComponent extends ChartComponent implements AfterViewIni
 
 @Directive({
     selector: 'leaflet-marker-chart',
+    host: {
+       '[style.display]': "'block'",
+       '[style.height]': "'100%'",
+       '[style.width]': "'100%'"
+    },
     providers: [
         {provide: CoordinateChartComponent, useExisting: forwardRef(() => LeafletMarkerChartComponent) },
         {provide: ChartComponent, useExisting: forwardRef(() => LeafletMarkerChartComponent) }
@@ -535,30 +567,33 @@ export class LeafletMarkerChartComponent extends ChartComponent implements After
     }
 
     ngAfterViewInit() {
-        let self = this
-
         // Add this property after it has been passed
-        this.clusterOptions.iconCreateFunction = self.leafletIcon.icon
+        this.clusterOptions.iconCreateFunction = this.leafletIcon.icon
 
         this._chart = dc.leafletMarkerChart(this.elementRef.nativeElement)
-            .fitOnRender(this.fitOnRender)
-            .fitOnRedraw(this.fitOnRedraw)
-            .center(this.center)
-            .zoom(this.zoom)
-            // Map options is needed in case we set cluster to true
-            .mapOptions({center: this.center, zoom: this.zoom, maxZoom: this.maxZoom})
-            .clusterOptions(this.clusterOptions)
-            .cluster(this.cluster)
-            .filterByArea(this.filterByArea)
-            .rebuildMarkers(this.rebuildMarkers)
-            .icon(this.leafletIcon.icon)
-            .locationAccessor(this.locationAccessor)
-            .tiles(this.topoLayer.layer)
+                        .fitOnRender(this.fitOnRender)
+                        .fitOnRedraw(this.fitOnRedraw)
+                        .center(this.center)
+                        .zoom(this.zoom)
+                        // Map options is needed in case we set cluster to true
+                        .mapOptions({center: this.center, zoom: this.zoom, maxZoom: this.maxZoom})
+                        .clusterOptions(this.clusterOptions)
+                        .cluster(this.cluster)
+                        .filterByArea(this.filterByArea)
+                        .rebuildMarkers(this.rebuildMarkers)
+                        .icon(this.leafletIcon.icon)
+                        .locationAccessor(this.locationAccessor)
+                        .tiles(this.topoLayer.layer)
     }
 }
 
 @Directive({
     selector: 'pie-chart',
+    host: {
+       '[style.display]': "'block'",
+       '[style.height]': "'100%'",
+       '[style.width]': "'100%'"
+    },
     providers: [
         {provide: ChartComponent, useExisting: forwardRef(() => PieChartComponent) }
     ]

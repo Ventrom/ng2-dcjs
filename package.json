@@ -18,8 +18,8 @@
   },
   "homepage": "https://github.com/Ventrom/ng2-dcjs#readme",
   "dependencies": {
-    "@angular/common": "^4.0.2",
-    "@angular/core": "^4.0.2",
+    "@angular/common": "^4.1.0",
+    "@angular/core": "^4.1.0",
     "d3": "3.5.17",
     "dc": "github:Ventrom/dc.js#kavanagh-grouped-bar",
     "dc-addons": "github:Ventrom/dc-addons",
