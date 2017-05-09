@@ -95,6 +95,12 @@ export class TopoLayerComponent implements OnInit {
     }
 }
 
+export interface ReduceFunctions {
+    reduceAdd: (p?: any[], v?: any) => any[],
+    reduceRemove: (p?: any[], v?: any) => any[],
+    reduceInitial: () => any[]
+}
+
 // Main chart components
 export abstract class ChartComponent implements AfterContentInit, OnDestroy {
     @Input() chartGroup: string = undefined
@@ -103,6 +109,7 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
     @Input() margins: {left?: number, right?: number, top?: number, bottom?: number} = null
     @Input() key: string = 'key'
     @Input() value: string = 'value'
+    @Input() reduceFns: ReduceFunctions
     @ContentChild(QueryComponent) query: QueryComponent
     destroyed: boolean = false
 
@@ -113,7 +120,7 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
             this.query.result.subscribe(result => {
                 this.chart.then((chart) => {
                     chart.dimension(result.column.dimension)
-                         .group(result.group)
+                         .group((this.reduceFns) ? result.group.reduce(this.reduceFns.reduceAdd, this.reduceFns.reduceRemove, this.reduceFns.reduceInitial) : result.group)
                          .keyAccessor(pluck(this.key))
                          .valueAccessor(pluck(this.value))
                     chart.render()
