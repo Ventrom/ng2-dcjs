@@ -3253,6 +3253,3 @@ dc.leafletLegend = function () {
 })();
 
 export default dc;
-//export { dc, L };
-//exports.dc = dc;
-//exports.L = L;

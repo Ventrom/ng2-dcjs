@@ -10,10 +10,11 @@ import {
     BubbleChartComponent,
     CandleChartComponent,
     LeafletMarkerChartComponent,
+    ChoroplethChartComponent,
     LegendComponent,
     TopoLayerComponent,
     LeafletIconComponent,
-    FomatsComponent
+    FormatsComponent
 } from './chart.components'
 import { QueryComponent } from './query.components'
 
@@ -28,10 +29,11 @@ import { QueryComponent } from './query.components'
         BubbleChartComponent,
         CandleChartComponent,
         LeafletMarkerChartComponent,
+        ChoroplethChartComponent,
         LegendComponent,
         TopoLayerComponent,
         LeafletIconComponent,
-        FomatsComponent,
+        FormatsComponent,
         QueryComponent
     ],
     imports: [
@@ -47,10 +49,11 @@ import { QueryComponent } from './query.components'
         BubbleChartComponent,
         CandleChartComponent,
         LeafletMarkerChartComponent,
+        ChoroplethChartComponent,
         LegendComponent,
         TopoLayerComponent,
         LeafletIconComponent,
-        FomatsComponent,
+        FormatsComponent,
         QueryComponent
     ]
 })

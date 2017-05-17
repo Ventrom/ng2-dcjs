@@ -12,14 +12,14 @@ L.Icon.Default.imagePath = './images/'
 
 // Directives used by the chart components
 @Directive({selector: 'd3-formats'})
-export class FomatsComponent {
+export class FormatsComponent {
     @Input() customFormat: any = d3.time.format("%a %e %b %H:%M")
     isoDateFormat: any = d3.time.format('%Y-%m-%dT%H:%M:%S')
     dayHourFormat: any = d3.time.format("%H:00 %d-%B-%Y")
     dayWeekNameFormat: any = d3.time.format("%d-%B-%Y")
     monthNameFormat: any = d3.time.format("%B-%Y")
     yearNameFormat: any = d3.time.format("%Y")
-    numberFormat: any = d3.format('.2s')
+    numberFormat: any = d3.format('.2f')
     intFormat: any = d3.format('f')
 }
 
@@ -121,8 +121,11 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
                 this.chart.then((chart) => {
                     chart.dimension(result.column.dimension)
                          .group((this.reduceFns) ? result.group.reduce(this.reduceFns.reduceAdd, this.reduceFns.reduceRemove, this.reduceFns.reduceInitial) : result.group)
-                         .keyAccessor(pluck(this.key))
                          .valueAccessor(pluck(this.value))
+
+                    // Added this condition because the keyAccessor seems to be overwritten in the leafletChoroplethChart
+                    if (!chart.hasOwnProperty('featureKeyAccessor')) chart.keyAccessor(pluck(this.key))
+
                     chart.render()
                 })
             })
@@ -328,7 +331,7 @@ export class BarChartComponent extends CoordinateChartComponent implements After
     @Input() outerPadding: number = 0.05
 
     @ContentChild(LegendComponent) legendComponent: LegendComponent
-    @ContentChild(FomatsComponent) formatsComponent: FomatsComponent
+    @ContentChild(FormatsComponent) formatsComponent: FormatsComponent
 
     private _chart: any = null
 
@@ -438,7 +441,7 @@ export class CandleChartComponent extends CoordinateChartComponent implements Af
     @Input() colorAccessor: () => number
     @Input() tickFormat: () => void = function() {}
 
-    @ContentChild(FomatsComponent) formatsComponent: FomatsComponent
+    @ContentChild(FormatsComponent) formatsComponent: FormatsComponent
 
     private _chart: any = null
 
@@ -591,6 +594,118 @@ export class LeafletMarkerChartComponent extends ChartComponent implements After
                         .icon(this.leafletIcon.icon)
                         .locationAccessor(this.locationAccessor)
                         .tiles(this.topoLayer.layer)
+    }
+}
+
+export interface OverlayGeoJson {
+    json: any,
+    name: string,
+    keyAccessor: (d: any) => string
+}
+
+@Directive({
+    selector: 'choropleth-chart',
+    host: {
+       '[style.display]': "'block'",
+       '[style.height]': "'100%'",
+       '[style.width]': "'100%'"
+    },
+    providers: [
+        {provide: CoordinateChartComponent, useExisting: forwardRef(() => ChoroplethChartComponent) },
+        {provide: ChartComponent, useExisting: forwardRef(() => ChoroplethChartComponent) }
+    ]
+})
+export class ChoroplethChartComponent extends ChartComponent implements AfterViewInit {
+    @Input() zoom: number
+    @Input() overlay: OverlayGeoJson
+    @Input() colorDomain: number[] = [0, 200]
+    @Input() center: number[] = [0, 0]
+    destroyed: boolean = false
+
+    @ContentChild(FormatsComponent) formatsComponent: FormatsComponent
+
+    private _chart: any = null
+
+    constructor(private elementRef: ElementRef) {
+        super()
+    }
+
+    get chart(): Promise<any> {
+        return new Promise<any>((resolve, reject) => {
+            d3.timer(() => {
+                if (this.destroyed) {
+                    reject(null)
+                    return true
+                }
+                if (this._chart) {
+                    resolve(this._chart)
+                    return true
+                }
+                return false
+            }, 0)
+        })
+    }
+
+    ngAfterViewInit() {
+        // Custom improvised pluck function for now
+        // TODO: remove this
+        function getValue(d: any) {
+            let value: number
+            if (d.value instanceof Number) {
+                value = d.value
+            } else if (!d.value) {
+                value = 0
+            } else {
+                let parts = self.value.split('.')
+                if (parts instanceof Array && parts.length > 0) {
+                    let tmp: any = null
+                    parts.forEach((p) => {
+                        tmp = (tmp) ? tmp[p] : d[p]
+                    })
+                    value = !Number.isNaN(tmp) ? tmp : 0
+                } else {
+                    value = 0
+                }
+            }
+
+            return value
+        }
+
+        let self = this
+        this._chart = dc.leafletChoroplethChart(this.elementRef.nativeElement)
+                        .center(this.center)
+                        .zoom(this.zoom)
+                        // Use these three color properties or the featureOptions, see below
+                        // TODO: add dynamic colors, this is only blue for now
+                        .colors(d3.scale.quantize().range(['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b', '#05214A']))
+                        .colorDomain(this.colorDomain)
+                        .colorCalculator(function (d) { return d ? self._chart.colors()(getValue(d)) : '#ccc' })
+                        .featureKeyAccessor(this.overlay.keyAccessor)
+                        .geojson(this.overlay.json)
+                        // This overrides the regular color scheme
+                        // See: https://github.com/Intellipharm/dc-addons/issues/21
+                        // Should not be used because v is never passed in, so it is
+                        // always undefined
+                        /*.featureOptions(function(feature, v) {
+                              if (v) {
+                                      return {"color": "gray",
+                                              "opacity": 1,
+                                              "weight": 0.4,
+                                              "fillColor": getColor(v.d.value),
+                                              "fillOpacity": 0.6};
+                              } else {
+                                      return {"color": "gray",
+                                              "opacity": 1,
+                                              "weight": 0.4,
+                                              "fillColor": "black",
+                                              "fillOpacity": 0.6};
+                              }
+                        })*/
+                        .title(function (d) {
+                            // TODO: add custom title string
+                            return 'State: ' + d.key + '\nTotal Amount Raised: ' + self.formatsComponent.numberFormat(getValue(d)) + 'M';
+                        })
+                        .legend(dc.leafletLegend().position('bottomright'))
     }
 }
 
