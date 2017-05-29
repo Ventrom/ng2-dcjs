@@ -2,6 +2,7 @@ import { AfterContentInit, AfterViewInit, ContentChildren, Directive, ElementRef
          ContentChild, EventEmitter, Input, Output, OnDestroy, OnInit, QueryList, forwardRef } from '@angular/core'
 import { QueryComponent } from './query.components';
 import * as d3 from 'd3';
+import colorbrewer from 'colorbrewer';
 
 declare var require;
 const pluck = require('pluck')
@@ -20,6 +21,8 @@ export class FormatsComponent {
     monthNameFormat: any = d3.time.format("%B-%Y")
     yearNameFormat: any = d3.time.format("%Y")
     numberFormat: any = d3.format('.2f')
+    commaNumberFormat: any = d3.format(',2f')
+    thousandNumberFormat: any = d3.format(',.2f')
     intFormat: any = d3.format('f')
 }
 
@@ -95,6 +98,23 @@ export class TopoLayerComponent implements OnInit {
     }
 }
 
+@Directive({selector: 'colors'})
+export class ColorComponent implements OnInit {
+    @Input() domain: number[] = [0, 200]
+    @Input() scale: any = d3.scale.quantile()
+    @Input() schemeSelect: string = "Oranges"
+    @Input() scheme: any = colorbrewer[this.schemeSelect]
+    @Input() quantiles: number = 7
+    @Input() singleColorIndex: number = -1
+    @Input() range: string[]
+    @Input() palette: any
+
+    ngOnInit() {
+        this.range = (this.singleColorIndex >= 0) ? [this.scheme[this.quantiles][this.singleColorIndex]] : this.scheme[this.quantiles]
+        this.palette = this.scale.range(this.range)
+    }
+}
+
 export interface ReduceFunctions {
     reduceAdd: (p?: any[], v?: any) => any[],
     reduceRemove: (p?: any[], v?: any) => any[],
@@ -110,21 +130,80 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
     @Input() key: string = 'key'
     @Input() value: string = 'value'
     @Input() reduceFns: ReduceFunctions
-    @ContentChild(QueryComponent) query: QueryComponent
+    @Input() renderlet: (chart: any) => void
+    @Input() sortGroup: boolean = false
+
     destroyed: boolean = false
+
+    @ContentChild(ColorComponent) colors: ColorComponent
+    @ContentChild(QueryComponent) query: QueryComponent
 
     abstract get chart(): Promise<any>
 
+    // Custom improvised pluck function for now
+    // TODO: remove this
+    getValue (d: any) {
+        let value: number
+        if (!(isNaN(d.value))) {
+            value = d.value
+        } else if (!d.value) {
+            value = 0
+        } else {
+            let parts = this.value.split('.')
+            if (parts instanceof Array && parts.length > 0) {
+                let tmp: any = null
+                parts.forEach((p) => {
+                    tmp = (tmp) ? tmp[p] : d[p]
+                })
+                value = !Number.isNaN(tmp) ? tmp : 0
+            } else {
+                value = 0
+            }
+        }
+
+        return value
+    }
+
     ngAfterContentInit() {
         if (this.query) {
+            let self = this
             this.query.result.subscribe(result => {
                 this.chart.then((chart) => {
+                    // A condition used to sort line charts using ordinal scale
+                    if (this.sortGroup) result.group.all = function() { return result.group.top(Infinity).sort(function(a, b) { return parseInt(a.key) - parseInt(b.key) }) }
+
                     chart.dimension(result.column.dimension)
                          .group((this.reduceFns) ? result.group.reduce(this.reduceFns.reduceAdd, this.reduceFns.reduceRemove, this.reduceFns.reduceInitial) : result.group)
-                         .valueAccessor(pluck(this.value))
+                         //.valueAccessor(pluck('value'))
+                         .valueAccessor(this.getValue.bind(this))
+                         .colors(this.colors.palette)
+                         .colorDomain(this.colors.domain)
+                         .colorCalculator(function (d) {
+                             return d ? chart.colors()(self.getValue(d)) : '#ccc'
+                         })
 
                     // Added this condition because the keyAccessor seems to be overwritten in the leafletChoroplethChart
                     if (!chart.hasOwnProperty('featureKeyAccessor')) chart.keyAccessor(pluck(this.key))
+
+                    // Added this condition so we can customize the number of rows and chart height accordingly. Without this
+                    // we can run into negative height values for the row rects when there are too many rows within a fixed
+                    // chart height
+                    if (chart.hasOwnProperty('cap') && !isNaN(chart.cap())) {
+                        // Take into account the cap, or the desired maximum number of horizontal bars
+                        let horizontalBars = result.group.all().length
+                        let height = chart.height()
+                        if (chart.cap() && chart.cap() < horizontalBars) {
+                            horizontalBars = chart.cap()
+                        }
+                        if (horizontalBars * 30 > chart.height()) {
+                            height = horizontalBars * 30
+                        }
+                        chart.height(height)
+                    }
+
+                    // Adding a condition to customize the renderlet. This can be useful in several situations when
+                    // filtering charts or redrawing groups
+                    if (this.renderlet) chart.on('renderlet', this.renderlet)
 
                     chart.render()
                 })
@@ -144,10 +223,12 @@ export abstract class CoordinateChartComponent extends ChartComponent {
     @Input() yScale: any
     @Input() xTicks: number
     @Input() yTicks: number
-    //TODO: add pipe for these three
     @Input() xLabel: string
     @Input() yLabel: string
+    @Input() xUnits: any
+    @Input() label: (d: any) => string
     @Input() title: (d: any) => string
+    @Input() ordering: (d: any) => number
     @Input() transitionDuration: number = 1000
 
     initialize(chart): any {
@@ -157,6 +238,11 @@ export abstract class CoordinateChartComponent extends ChartComponent {
         if (this.yTicks) chart.yAxis().ticks(this.yTicks)
         if (this.margins) chart.margins(this.margins)
         if (this.title) chart.title(this.title)
+        if (this.label) chart.label(this.label)
+        if (this.xLabel) chart.xAxisLabel(this.xLabel)
+        if (this.yLabel) chart.yAxisLabel(this.yLabel)
+        if (this.xUnits) chart.xUnits(dc.units[this.xUnits])
+        if (this.ordering) chart.ordering(this.ordering)
         chart.transitionDuration(this.transitionDuration)
         return chart
     }
@@ -277,9 +363,10 @@ export class SandChartComponent extends CoordinateChartComponent implements Afte
     ]
 })
 export class RowChartComponent extends CoordinateChartComponent implements AfterViewInit {
-    @Input() colors: any = d3.scale.category10()
     @Input() elasticX: boolean = true
-    @Input() label: (d: any) => string
+    @Input() gap: number = 4
+    @Input() colorDomain: number[] = [0, 200]
+    @Input() cap: number = Infinity
 
     private _chart: any = null
 
@@ -306,7 +393,9 @@ export class RowChartComponent extends CoordinateChartComponent implements After
     ngAfterViewInit() {
         this._chart = dc.rowChart(this.elementRef.nativeElement)
                         .elasticX(this.elasticX)
-                        .label(this.label)
+                        .gap(this.gap)
+                        .cap(this.cap)
+
         this.initialize(this._chart)
     }
 }
@@ -329,6 +418,7 @@ export class BarChartComponent extends CoordinateChartComponent implements After
     @Input() gap: number = 1
     @Input() centerBar: boolean = true
     @Input() outerPadding: number = 0.05
+    @Input() barPadding: number = 0.1
 
     @ContentChild(LegendComponent) legendComponent: LegendComponent
     @ContentChild(FormatsComponent) formatsComponent: FormatsComponent
@@ -362,10 +452,11 @@ export class BarChartComponent extends CoordinateChartComponent implements After
                    .gap(this.gap)
                    .centerBar(this.centerBar)
                    .outerPadding(this.outerPadding)
+                   .barPadding(this.barPadding)
                    .elasticY(this.elasticY)
-                   .yAxis().tickFormat(function(v) {return self.formatsComponent.numberFormat(v)})
+                   .yAxis().tickFormat(function(v) { return self.formatsComponent.commaNumberFormat(v) })
 
-        this._chart.legend(this.legendComponent.legend)
+        if (this.legendComponent && this.legendComponent.legend) this._chart.legend(this.legendComponent.legend)
         this.initialize(this._chart)
     }
 }
@@ -476,7 +567,7 @@ export class CandleChartComponent extends CoordinateChartComponent implements Af
                    .boxWidth(this.boxWidth)
                    .tickFormat(this.tickFormat)
                    .yAxisPadding(this.yAxisPadding)
-                   .yAxis().tickFormat(function(v) {return self.formatsComponent.numberFormat(v)})
+                   .yAxis().tickFormat(function(v) { return self.formatsComponent.numberFormat(v) })
 
         if (this.colorAccessor) this._chart.colorAccessor(this.colorAccessor)
         this.initialize(this._chart)
@@ -620,6 +711,7 @@ export class ChoroplethChartComponent extends ChartComponent implements AfterVie
     @Input() overlay: OverlayGeoJson
     @Input() colorDomain: number[] = [0, 200]
     @Input() center: number[] = [0, 0]
+    @Input() title: string[] = ['', '', 'numberFormat']
     destroyed: boolean = false
 
     @ContentChild(FormatsComponent) formatsComponent: FormatsComponent
@@ -647,45 +739,17 @@ export class ChoroplethChartComponent extends ChartComponent implements AfterVie
     }
 
     ngAfterViewInit() {
-        // Custom improvised pluck function for now
-        // TODO: remove this
-        function getValue(d: any) {
-            let value: number
-            if (d.value instanceof Number) {
-                value = d.value
-            } else if (!d.value) {
-                value = 0
-            } else {
-                let parts = self.value.split('.')
-                if (parts instanceof Array && parts.length > 0) {
-                    let tmp: any = null
-                    parts.forEach((p) => {
-                        tmp = (tmp) ? tmp[p] : d[p]
-                    })
-                    value = !Number.isNaN(tmp) ? tmp : 0
-                } else {
-                    value = 0
-                }
-            }
-
-            return value
-        }
-
         let self = this
         this._chart = dc.leafletChoroplethChart(this.elementRef.nativeElement)
                         .center(this.center)
                         .zoom(this.zoom)
-                        // Use these three color properties or the featureOptions, see below
-                        // TODO: add dynamic colors, this is only blue for now
-                        .colors(d3.scale.quantize().range(['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b', '#05214A']))
-                        .colorDomain(this.colorDomain)
-                        .colorCalculator(function (d) { return d ? self._chart.colors()(getValue(d)) : '#ccc' })
                         .featureKeyAccessor(this.overlay.keyAccessor)
                         .geojson(this.overlay.json)
                         // This overrides the regular color scheme
                         // See: https://github.com/Intellipharm/dc-addons/issues/21
                         // Should not be used because v is never passed in, so it is
                         // always undefined
+                        // TODO: test this again
                         /*.featureOptions(function(feature, v) {
                               if (v) {
                                       return {"color": "gray",
@@ -702,8 +766,7 @@ export class ChoroplethChartComponent extends ChartComponent implements AfterVie
                               }
                         })*/
                         .title(function (d) {
-                            // TODO: add custom title string
-                            return 'State: ' + d.key + '\nTotal Amount Raised: ' + self.formatsComponent.numberFormat(getValue(d)) + 'M';
+                            return (self.title.length > 0) ? d.key + ' ' + self.title[0] + '\n' + self.title[1] + self.formatsComponent[self.title[2]](self.getValue(d)) : '';
                         })
                         .legend(dc.leafletLegend().position('bottomright'))
     }
@@ -722,6 +785,7 @@ export class ChoroplethChartComponent extends ChartComponent implements AfterVie
 })
 export class PieChartComponent extends ChartComponent implements AfterViewInit {
     @Input() radius: number
+    // Cap is actually slicesCap, or the max number of slices
     @Input() cap: number
 
     private _chart: any = null

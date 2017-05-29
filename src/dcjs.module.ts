@@ -14,7 +14,8 @@ import {
     LegendComponent,
     TopoLayerComponent,
     LeafletIconComponent,
-    FormatsComponent
+    FormatsComponent,
+    ColorComponent
 } from './chart.components'
 import { QueryComponent } from './query.components'
 
@@ -34,7 +35,8 @@ import { QueryComponent } from './query.components'
         TopoLayerComponent,
         LeafletIconComponent,
         FormatsComponent,
-        QueryComponent
+        QueryComponent,
+        ColorComponent
     ],
     imports: [
         CommonModule
@@ -54,7 +56,8 @@ import { QueryComponent } from './query.components'
         TopoLayerComponent,
         LeafletIconComponent,
         FormatsComponent,
-        QueryComponent
+        QueryComponent,
+        ColorComponent
     ]
 })
 export class DcjsModule {}

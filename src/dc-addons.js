@@ -795,7 +795,8 @@ dc.leafletLegend = function () {
             _update: function () {
                 if (_parent.colorDomain()) { // check because undefined for marker charts
                     var minValue = _parent.colorDomain()[0],
-                        maxValue = _parent.colorDomain()[1],
+                        // Changing this line to use a max value of the colorDomain
+                        maxValue = _parent.colorDomain()[_parent.colorDomain().length-1],
                         palette = _parent.colors().range(),
                         colorLength = _parent.colors().range().length,
                         delta = (maxValue - minValue) / colorLength,
