@@ -116,9 +116,9 @@ export class ColorComponent implements OnInit {
 }
 
 export interface ReduceFunctions {
-    reduceAdd: (p?: any[], v?: any) => any[],
-    reduceRemove: (p?: any[], v?: any) => any[],
-    reduceInitial: () => any[]
+    reduceAdd: (p?: any, v?: any) => any,
+    reduceRemove: (p?: any, v?: any) => any,
+    reduceInitial: () => any
 }
 
 // Main chart components
@@ -129,9 +129,10 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
     @Input() margins: {left?: number, right?: number, top?: number, bottom?: number} = null
     @Input() key: string = 'key'
     @Input() value: string = 'value'
-    @Input() reduceFns: ReduceFunctions
+    @Input() reduceFns: Map<string, ReduceFunctions>
     @Input() renderlet: (chart: any) => void
     @Input() sortGroup: boolean = false
+    @Input() grouped: boolean = false; // true = grouped bar, false = stacked bar
 
     destroyed: boolean = false
 
@@ -172,8 +173,11 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
                     // A condition used to sort line charts using ordinal scale
                     if (this.sortGroup) result.group.all = function() { return result.group.top(Infinity).sort(function(a, b) { return parseInt(a.key) - parseInt(b.key) }) }
 
+                    let groupKeys = this.reduceFns ? Object.keys(this.reduceFns) : [];
+                    let firstKey = groupKeys.length > 0 ? groupKeys[0] : "";
+
                     chart.dimension(result.column.dimension)
-                         .group((this.reduceFns) ? result.group.reduce(this.reduceFns.reduceAdd, this.reduceFns.reduceRemove, this.reduceFns.reduceInitial) : result.group)
+                         .group((groupKeys.length > 0) ? result.group.reduce(this.reduceFns[firstKey].reduceAdd, this.reduceFns[firstKey].reduceRemove, this.reduceFns[firstKey].reduceInitial) : result.group)
                          //.valueAccessor(pluck('value'))
                          .valueAccessor(this.getValue.bind(this))
                          .colors(this.colors.palette)
@@ -181,6 +185,18 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
                          .colorCalculator(function (d) {
                              return d ? chart.colors()(self.getValue(d)) : '#ccc'
                          })
+
+                    if(this.grouped) chart.renderType('group');
+
+                    for(let i = 1; i < groupKeys.length; i++){
+
+                      let k = groupKeys[i];
+                      let g = result.column.dimension
+                        .group()
+                        .reduce(this.reduceFns[k].reduceAdd, this.reduceFns[k].reduceRemove, this.reduceFns[k].reduceInitial)
+
+                      chart.stack(g, k);
+                    }
 
                     // Added this condition because the keyAccessor seems to be overwritten in the leafletChoroplethChart
                     if (!chart.hasOwnProperty('featureKeyAccessor')) chart.keyAccessor(pluck(this.key))
