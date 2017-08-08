@@ -111,7 +111,8 @@ export class ColorComponent implements OnInit {
 
     ngOnInit() {
         this.range = (this.singleColorIndex >= 0) ? [this.scheme[this.quantiles][this.singleColorIndex]] : this.scheme[this.quantiles]
-        this.palette = this.scale.range(this.range)
+        if(!this.palette)
+          this.palette = this.scale.range(this.range)
     }
 }
 
