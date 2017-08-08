@@ -133,7 +133,7 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
     @Input() renderlet: (chart: any) => void
     @Input() sortGroup: boolean = false
     @Input() grouped: boolean = false; // true = grouped bar, false = stacked bar
-
+    @Input() colorAccessor: (d: any, i?: number) => void = (d,i) => { return i; };
     destroyed: boolean = false
 
     @ContentChild(ColorComponent) colors: ColorComponent
@@ -177,14 +177,13 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
                     let firstKey = groupKeys.length > 0 ? groupKeys[0] : "";
 
                     chart.dimension(result.column.dimension)
-                         .group((groupKeys.length > 0) ? result.group.reduce(this.reduceFns[firstKey].reduceAdd, this.reduceFns[firstKey].reduceRemove, this.reduceFns[firstKey].reduceInitial) : result.group)
+                         .group((groupKeys.length > 0) ? result.group.reduce(this.reduceFns[firstKey].reduceAdd, this.reduceFns[firstKey].reduceRemove, this.reduceFns[firstKey].reduceInitial) : result.group,
+                            (groupKeys.length > 0) ? firstKey : null)
                          //.valueAccessor(pluck('value'))
                          .valueAccessor(this.getValue.bind(this))
                          .colors(this.colors.palette)
-                         .colorDomain(this.colors.domain)
-                         .colorCalculator(function (d) {
-                             return d ? chart.colors()(self.getValue(d)) : '#ccc'
-                         })
+                         .colorAccessor(this.colorAccessor);
+
 
                     if(this.grouped) chart.renderType('group');
 
