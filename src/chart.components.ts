@@ -249,6 +249,9 @@ export abstract class CoordinateChartComponent extends ChartComponent {
     @Input() xLabel: string
     @Input() yLabel: string
     @Input() xUnits: any
+    @Input() yAxisMax: any = null
+    @Input() yAxisMin: any = null
+
     @Input() label: (d: any) => string
     @Input() title: (d: any) => string
     @Input() ordering: (d: any) => number
@@ -266,6 +269,9 @@ export abstract class CoordinateChartComponent extends ChartComponent {
         if (this.yLabel) chart.yAxisLabel(this.yLabel)
         if (this.xUnits) chart.xUnits(dc.units[this.xUnits])
         if (this.ordering) chart.ordering(this.ordering)
+        if (this.yAxisMax !== null) chart.yAxisMax(this.yAxisMax)
+        if (this.yAxisMin !== null) chart.yAxisMin(this.yAxisMin)
+
         chart.transitionDuration(this.transitionDuration)
         return chart
     }
@@ -442,8 +448,6 @@ export class BarChartComponent extends CoordinateChartComponent implements After
     @Input() centerBar: boolean = true
     @Input() outerPadding: number = 0.05
     @Input() barPadding: number = 0.1
-    @Input() yAxisMax: number = null;
-    @Input() yAxisMin: number = null;
 
     @ContentChild(LegendComponent) legendComponent: LegendComponent
     @ContentChild(FormatsComponent) formatsComponent: FormatsComponent
@@ -482,8 +486,6 @@ export class BarChartComponent extends CoordinateChartComponent implements After
                    .yAxis().tickFormat(function(v) { return self.formatsComponent.commaNumberFormat(v) })
 
         if (this.legendComponent && this.legendComponent.legend) this._chart.legend(this.legendComponent.legend)
-        if(this.yAxisMax !== null) this._chart.yAxisMax(this.yAxisMax);
-        if(this.yAxisMin !== null) this._chart.yAxisMin(this.yAxisMin);
 
         this.initialize(this._chart)
     }
