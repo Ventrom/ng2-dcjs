@@ -249,8 +249,6 @@ export abstract class CoordinateChartComponent extends ChartComponent {
     @Input() xLabel: string
     @Input() yLabel: string
     @Input() xUnits: any
-    @Input() yAxisMax: any = null
-    @Input() yAxisMin: any = null
 
     @Input() label: (d: any) => string
     @Input() title: (d: any) => string
@@ -269,8 +267,6 @@ export abstract class CoordinateChartComponent extends ChartComponent {
         if (this.yLabel) chart.yAxisLabel(this.yLabel)
         if (this.xUnits) chart.xUnits(dc.units[this.xUnits])
         if (this.ordering) chart.ordering(this.ordering)
-        if (this.yAxisMax !== null) chart.yAxisMax(this.yAxisMax)
-        if (this.yAxisMin !== null) chart.yAxisMin(this.yAxisMin)
 
         chart.transitionDuration(this.transitionDuration)
         return chart
