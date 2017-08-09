@@ -442,6 +442,8 @@ export class BarChartComponent extends CoordinateChartComponent implements After
     @Input() centerBar: boolean = true
     @Input() outerPadding: number = 0.05
     @Input() barPadding: number = 0.1
+    @Input() yAxisMax: number = null;
+    @Input() yAxisMin: number = null;
 
     @ContentChild(LegendComponent) legendComponent: LegendComponent
     @ContentChild(FormatsComponent) formatsComponent: FormatsComponent
@@ -480,6 +482,9 @@ export class BarChartComponent extends CoordinateChartComponent implements After
                    .yAxis().tickFormat(function(v) { return self.formatsComponent.commaNumberFormat(v) })
 
         if (this.legendComponent && this.legendComponent.legend) this._chart.legend(this.legendComponent.legend)
+        if(this.yAxisMax !== null) this._chart.yAxisMax(this.yAxisMax);
+        if(this.yAxisMin !== null) this._chart.yAxisMin(this.yAxisMin);
+
         this.initialize(this._chart)
     }
 }
