@@ -32,6 +32,8 @@ export class LegendComponent implements OnInit {
     @Input() y: number
     @Input() itemHeight: number
     @Input() gap: number
+    @Input() legendText: any;
+    @Input() horizontal: boolean = false;
     legend: any = dc.legend()
 
     ngOnInit() {
@@ -39,6 +41,8 @@ export class LegendComponent implements OnInit {
         if (this.y) this.legend.y(this.y)
         if (this.itemHeight) this.legend.itemHeight(this.itemHeight)
         if (this.gap) this.legend.gap(this.gap)
+        if (this.legendText) this.legend.legendText(this.legendText)
+        if (this.horizontal) this.legend.horizontal(this.horizontal)
     }
 }
 
@@ -135,6 +139,7 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
     @Input() sortGroup: boolean = false
     @Input() grouped: boolean = false; // true = grouped bar, false = stacked bar
     @Input() colorAccessor: (d: any, i?: number) => void = (d,i) => { return i; };
+    @Input() labelAccessor: (p: any) => void;
     destroyed: boolean = false
 
     @ContentChild(ColorComponent) colors: ColorComponent
@@ -199,7 +204,9 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
                     }
 
                     // Added this condition because the keyAccessor seems to be overwritten in the leafletChoroplethChart
-                    if (!chart.hasOwnProperty('featureKeyAccessor')) chart.keyAccessor(pluck(this.key))
+                    if (!chart.hasOwnProperty('featureKeyAccessor')) {
+                      chart.keyAccessor(pluck(this.key))
+                    }
 
                     // Added this condition so we can customize the number of rows and chart height accordingly. Without this
                     // we can run into negative height values for the row rects when there are too many rows within a fixed
