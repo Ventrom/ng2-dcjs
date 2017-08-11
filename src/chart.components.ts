@@ -32,6 +32,8 @@ export class LegendComponent implements OnInit {
     @Input() y: number
     @Input() itemHeight: number
     @Input() gap: number
+    @Input() legendText: any;
+    @Input() horizontal: boolean = false;
     legend: any = dc.legend()
 
     ngOnInit() {
@@ -39,6 +41,8 @@ export class LegendComponent implements OnInit {
         if (this.y) this.legend.y(this.y)
         if (this.itemHeight) this.legend.itemHeight(this.itemHeight)
         if (this.gap) this.legend.gap(this.gap)
+        if (this.legendText) this.legend.legendText(this.legendText)
+        if (this.horizontal) this.legend.horizontal(this.horizontal)
     }
 }
 
@@ -111,14 +115,15 @@ export class ColorComponent implements OnInit {
 
     ngOnInit() {
         this.range = (this.singleColorIndex >= 0) ? [this.scheme[this.quantiles][this.singleColorIndex]] : this.scheme[this.quantiles]
-        this.palette = this.scale.range(this.range)
+        if(!this.palette)
+          this.palette = this.scale.range(this.range)
     }
 }
 
 export interface ReduceFunctions {
-    reduceAdd: (p?: any[], v?: any) => any[],
-    reduceRemove: (p?: any[], v?: any) => any[],
-    reduceInitial: () => any[]
+    reduceAdd: (p?: any, v?: any) => any,
+    reduceRemove: (p?: any, v?: any) => any,
+    reduceInitial: () => any
 }
 
 // Main chart components
@@ -129,10 +134,12 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
     @Input() margins: {left?: number, right?: number, top?: number, bottom?: number} = null
     @Input() key: string = 'key'
     @Input() value: string = 'value'
-    @Input() reduceFns: ReduceFunctions
+    @Input() reduceFns: Map<string, ReduceFunctions>
     @Input() renderlet: (chart: any) => void
     @Input() sortGroup: boolean = false
-
+    @Input() grouped: boolean = false; // true = grouped bar, false = stacked bar
+    @Input() colorAccessor: (d: any, i?: number) => void = (d,i) => { return i; };
+    @Input() labelAccessor: (p: any) => void;
     destroyed: boolean = false
 
     @ContentChild(ColorComponent) colors: ColorComponent
@@ -172,18 +179,34 @@ export abstract class ChartComponent implements AfterContentInit, OnDestroy {
                     // A condition used to sort line charts using ordinal scale
                     if (this.sortGroup) result.group.all = function() { return result.group.top(Infinity).sort(function(a, b) { return parseInt(a.key) - parseInt(b.key) }) }
 
+                    let groupKeys = this.reduceFns ? Object.keys(this.reduceFns) : [];
+                    let firstKey = groupKeys.length > 0 ? groupKeys[0] : "";
+
                     chart.dimension(result.column.dimension)
-                         .group((this.reduceFns) ? result.group.reduce(this.reduceFns.reduceAdd, this.reduceFns.reduceRemove, this.reduceFns.reduceInitial) : result.group)
+                         .group((groupKeys.length > 0) ? result.group.reduce(this.reduceFns[firstKey].reduceAdd, this.reduceFns[firstKey].reduceRemove, this.reduceFns[firstKey].reduceInitial) : result.group,
+                            (groupKeys.length > 0) ? firstKey : null)
                          //.valueAccessor(pluck('value'))
                          .valueAccessor(this.getValue.bind(this))
                          .colors(this.colors.palette)
-                         .colorDomain(this.colors.domain)
-                         .colorCalculator(function (d) {
-                             return d ? chart.colors()(self.getValue(d)) : '#ccc'
-                         })
+                         .colorAccessor(this.colorAccessor);
+
+
+                    if(this.grouped) chart.renderType('group');
+
+                    for(let i = 1; i < groupKeys.length; i++){
+
+                      let k = groupKeys[i];
+                      let g = result.column.dimension
+                        .group()
+                        .reduce(this.reduceFns[k].reduceAdd, this.reduceFns[k].reduceRemove, this.reduceFns[k].reduceInitial)
+
+                      chart.stack(g, k);
+                    }
 
                     // Added this condition because the keyAccessor seems to be overwritten in the leafletChoroplethChart
-                    if (!chart.hasOwnProperty('featureKeyAccessor')) chart.keyAccessor(pluck(this.key))
+                    if (!chart.hasOwnProperty('featureKeyAccessor')) {
+                      chart.keyAccessor(pluck(this.key))
+                    }
 
                     // Added this condition so we can customize the number of rows and chart height accordingly. Without this
                     // we can run into negative height values for the row rects when there are too many rows within a fixed
@@ -226,6 +249,7 @@ export abstract class CoordinateChartComponent extends ChartComponent {
     @Input() xLabel: string
     @Input() yLabel: string
     @Input() xUnits: any
+
     @Input() label: (d: any) => string
     @Input() title: (d: any) => string
     @Input() ordering: (d: any) => number
@@ -243,6 +267,7 @@ export abstract class CoordinateChartComponent extends ChartComponent {
         if (this.yLabel) chart.yAxisLabel(this.yLabel)
         if (this.xUnits) chart.xUnits(dc.units[this.xUnits])
         if (this.ordering) chart.ordering(this.ordering)
+
         chart.transitionDuration(this.transitionDuration)
         return chart
     }
@@ -457,6 +482,7 @@ export class BarChartComponent extends CoordinateChartComponent implements After
                    .yAxis().tickFormat(function(v) { return self.formatsComponent.commaNumberFormat(v) })
 
         if (this.legendComponent && this.legendComponent.legend) this._chart.legend(this.legendComponent.legend)
+
         this.initialize(this._chart)
     }
 }
