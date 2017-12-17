@@ -19,13 +19,13 @@ https://Ventrom.github.io/Ventrom/ng2-dcjs/demo/
 
 ## About
 
-A collection of Angular2 components to render WebGL scenes with dcjs
+A collection of Angular2 components to render dcjs charts
 
 ## Installation
 
 Install through npm:
 ```
-npm install --save ng2-dcjs
+npm install --save github:ventrom/ng2-dcjs
 ```
 
 To use the module, first import it in your app:
@@ -51,8 +51,7 @@ export class AppModule {}
 ```
 
 ## Documentation
-All documentation is auto-generated from the source via typedoc and can be viewed here:
-https://Ventrom.github.io/Ventrom/ng2-dcjs/docs/
+All documentation is auto-generated from the source via typedoc.
 
 ## Development
 
